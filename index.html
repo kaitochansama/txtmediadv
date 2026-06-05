@@ -225,7 +225,7 @@
                 </div>
                 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-                    <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-90 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-600/20 transition duration-200 text-sm uppercase tracking-wider">
+                    <button type="submit" id="submit-btn" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-90 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-600/20 transition duration-200 text-sm uppercase tracking-wider disabled:opacity-50">
                         <i class="fas fa-paper-plane mr-2"></i> Gửi Đơn Đặt Hàng
                     </button>
                     <a href="https://zalo.me/0868571876" target="_blank" class="w-full bg-[#0068ff] hover:bg-[#0056d2] text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 text-sm uppercase tracking-wider transition duration-200">
@@ -293,6 +293,12 @@
     </footer>
 
     <script>
+        // --- PHẦN CẤU HÌNH TELEGRAM (THAY TOKEN CỦA BẠN VÀO ĐÂY) ---
+        const TELEGRAM_TOKEN = '8649833646:AAHpwG9B-AyEba8FEK7_hQJjJZD3mHCfT5c';
+        const TELEGRAM_CHAT_ID = '8125276378';
+        // -----------------------------------------------------------
+
+        // Đóng mở Menu trên Điện thoại
         const menuBtn = document.getElementById('mobile-menu-btn');
         const mobileMenu = document.getElementById('mobile-menu');
 
@@ -307,22 +313,65 @@
             });
         });
 
+        // Hàm tự động chọn gói và cuộn trang xuống Form
         function selectPackage(packageName) {
             const selectBox = document.getElementById('service-select');
             selectBox.value = packageName;
             document.getElementById('order').scrollIntoView({ behavior: 'smooth' });
         }
 
+        // Hàm xử lý sự kiện gửi Đơn đặt hàng
         function handleOrder(event) {
             event.preventDefault();
 
+            // Lấy dữ liệu từ Form nhập liệu
             const name = document.getElementById('fullname').value;
             const phone = document.getElementById('phone').value;
             const service = document.getElementById('service-select').value;
+            const link = document.getElementById('fblink').value;
+            const note = document.getElementById('note').value || 'Không có ghi chú thêm.';
 
-            alert(`Cảm ơn ${name}!\nYêu cầu đặt hàng gói [${service}] của bạn đã được tiếp nhận.\nChúng tôi sẽ liên hệ qua SĐT/Zalo ${phone} trong giây lát.`);
+            const submitBtn = document.getElementById('submit-btn');
             
-            document.getElementById('fb-order-form').reset();
+            // Khóa nút bấm tạm thời để tránh khách click gửi liên tiếp nhiều lần
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner animate-spin mr-2"></i> Đang gửi đơn...';
+
+            // Định dạng chuỗi văn bản gửi về Telegram
+            const messageText = `🔔 **CÓ ĐƠN HÀNG MỚI từ TXT MEDIA** 🔔\n\n` +
+                                `👤 **Khách hàng:** ${name}\n` +
+                                `📞 **SĐT / Zalo:** ${phone}\n` +
+                                `📦 **Dịch vụ:** ${service}\n` +
+                                `🔗 **Link liên kết:** ${link}\n` +
+                                `📝 **Ghi chú:** ${note}`;
+
+            // Gửi dữ liệu qua API Telegram bằng phương thức POST
+            fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: TELEGRAM_CHAT_ID,
+                    text: messageText,
+                    parse_mode: 'Markdown'
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert(`Cảm ơn ${name}!\nYêu cầu đặt hàng của bạn đã được tiếp nhận thành công.\nChúng tôi sẽ liên hệ qua số ${phone} trong giây lát.`);
+                    document.getElementById('fb-order-form').reset();
+                } else {
+                    alert('Lỗi: Chưa cấu hình đúng mã Token Telegram. Vui lòng liên hệ trực tiếp qua Zalo để đặt hàng!');
+                }
+            })
+            .catch(error => {
+                alert('Không thể kết nối mạng. Vui lòng kiểm tra lại đường truyền internet hoặc nhắn Zalo trực tiếp!');
+                console.error(error);
+            })
+            .finally(() => {
+                // Khôi phục lại trạng thái nút bấm
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i> Gửi Đơn Đặt Hàng';
+            });
         }
     </script>
 </body>
